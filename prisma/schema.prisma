@@ -1,0 +1,80 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  firstName    String    @map("first_name")
+  lastName     String    @map("last_name")
+  email        String?   @unique
+  mobile       String?   @unique
+  password     String
+  profileImage String?   @map("profile_image")
+  coverImage   String?   @map("cover_image")
+  posts        Post[]
+  comments     Comment[]
+  likes        Like[]
+  requesters   Friend[]  @relation("requester")
+  receiver     Friend[]  @relation("receiver")
+
+  @@map("users")
+}
+
+model Post {
+  id        Int       @id @default(autoincrement())
+  message   String?
+  image     String?
+  createdAt DateTime  @default(now()) @map("created_at")
+  totalLike Int       @default(0) @map("total_like")
+  userId    Int       @map("user_id")
+  user      User      @relation(fields: [userId], references: [id])
+  comments  Comment[]
+  likes     Like[]
+
+  @@map("posts")
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  message   String
+  createdAt DateTime @default(now()) @map("created_at")
+  userId    Int      @map("user_id")
+  user      User     @relation(fields: [userId], references: [id])
+  postId    Int      @map("post_id")
+  post      Post     @relation(fields: [postId], references: [id])
+
+  @@map("comments")
+}
+
+model Like {
+  id     Int  @id @default(autoincrement())
+  userId Int  @map("user_id")
+  user   User @relation(fields: [userId], references: [id])
+  postId Int  @map("post_id")
+  post   Post @relation(fields: [postId], references: [id])
+
+  @@map("likes")
+}
+
+model Friend {
+  id          Int          @id @default(autoincrement())
+  status      FriendStatus
+  createdAt   DateTime     @default(now()) @map("created_at")
+  requesterId Int          @map("requester_id")
+  requester   User         @relation("requester", fields: [requesterId], references: [id])
+  receiverId  Int          @map("receiver_id")
+  receiver    User         @relation("receiver", fields: [receiverId], references: [id])
+}
+
+enum FriendStatus {
+  ACCEPTED
+  PENDING
+}
