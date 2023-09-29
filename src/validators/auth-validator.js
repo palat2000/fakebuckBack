@@ -37,3 +37,10 @@ const registerSchema = Joi.object({
 // }
 
 module.exports.registerSchema = registerSchema;
+
+const loginSchema = Joi.object({
+  emailOrMobile: Joi.string().required(),
+  password: Joi.string().required(),
+});
+
+exports.loginSchema = loginSchema;
