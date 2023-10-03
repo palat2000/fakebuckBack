@@ -10,6 +10,14 @@ exports.register = async (req, res, next) => {
     if (error) {
       return next(error);
     }
+    const isMatch = await prisma.user.findFirst({
+      where: {
+        OR: [{ email: value.email }, { mobile: value.mobile }],
+      },
+    });
+    if (isMatch) {
+      return next(createError("Email or mobile is already used", 400));
+    }
     value.password = await bcrypt.hash(value.password, 13);
     const user = await prisma.user.create({
       data: value,
