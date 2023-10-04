@@ -51,7 +51,8 @@ exports.updateProfile = async (req, res, next) => {
 
 exports.getUserById = async (req, res, next) => {
   try {
-    const { error } = checkUserIdSchema.validate(req.params);
+    const { value, error } = checkUserIdSchema.validate(req.params);
+    console.log(value);
     if (error) {
       return next(error);
     }
@@ -66,6 +67,24 @@ exports.getUserById = async (req, res, next) => {
     }
     res.status(200).json({ user });
   } catch (err) {
-    next(err);
+    return next(err);
+  }
+};
+
+exports.requestFriend = async (req, res, next) => {
+  try {
+    const requesterId = +req.user.id;
+    const receiverId = +req.params.receiverId;
+    const response = await prisma.friend.create({
+      data: {
+        status: "PENDING",
+        receiverId,
+        requesterId,
+      },
+    });
+    console.log(response);
+    res.status(200).json(response);
+  } catch (err) {
+    return next(err);
   }
 };
