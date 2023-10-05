@@ -3,7 +3,70 @@ const cloudinary = require("../config/cloudinary");
 const prisma = require("../model/prisma");
 const { upload } = require("../utils/cloudinary-service");
 const createError = require("../utils/create-error");
-const { checkUserIdSchema } = require("../validators/user-validator");
+const { checkIdSchema } = require("../validators/user-validator");
+const {
+  AUTH_USER,
+  UNKNOWN,
+  STATUS_ACCEPTED,
+  FRIEND,
+  REQUESTER,
+  RECEIVER,
+} = require("../config/constants");
+
+const getTargetUserStatusWithAuthUser = async (targetUserId, authUserId) => {
+  if (targetUserId === authUserId) return AUTH_USER;
+
+  const relationship = await prisma.friend.findFirst({
+    where: {
+      OR: [
+        { requesterId: targetUserId, receiverId: authUserId },
+        { requesterId: authUserId, receiverId: targetUserId },
+      ],
+    },
+  });
+  if (!relationship) return UNKNOWN;
+  if (relationship.status === STATUS_ACCEPTED) return FRIEND;
+  if (relationship.requesterId === authUserId) return REQUESTER;
+  return RECEIVER;
+};
+
+const getTargetUserFriend = async (targetUserId) => {
+  const relationships = await prisma.friend.findMany({
+    where: {
+      status: STATUS_ACCEPTED,
+      OR: [{ requesterId: targetUserId }, { receiverId: targetUserId }],
+    },
+    select: {
+      receiver: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          mobile: true,
+          profileImage: true,
+          coverImage: true,
+        },
+      },
+      requester: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          mobile: true,
+          profileImage: true,
+          coverImage: true,
+        },
+      },
+    },
+  });
+  const friends = relationships.map((el) =>
+    el.requester.id === targetUserId ? el.receiver : el.requester
+  );
+  friends.sort(() => Math.random() - 0.5);
+  return friends;
+};
 
 exports.updateProfile = async (req, res, next) => {
   try {
@@ -51,39 +114,23 @@ exports.updateProfile = async (req, res, next) => {
 
 exports.getUserById = async (req, res, next) => {
   try {
-    const { value, error } = checkUserIdSchema.validate(req.params);
-    console.log(value);
+    const { value, error } = checkIdSchema("userId").validate(req.params);
     if (error) {
       return next(error);
     }
-    const { userId } = req.params;
     const user = await prisma.user.findUnique({
       where: {
-        id: +userId,
+        id: value.userId,
       },
     });
+    let status = null;
+    let friends = null;
     if (user) {
       delete user.password;
+      status = await getTargetUserStatusWithAuthUser(value.userId, req.user.id);
+      friends = await getTargetUserFriend(value.userId);
     }
-    res.status(200).json({ user });
-  } catch (err) {
-    return next(err);
-  }
-};
-
-exports.requestFriend = async (req, res, next) => {
-  try {
-    const requesterId = +req.user.id;
-    const receiverId = +req.params.receiverId;
-    const response = await prisma.friend.create({
-      data: {
-        status: "PENDING",
-        receiverId,
-        requesterId,
-      },
-    });
-    console.log(response);
-    res.status(200).json(response);
+    res.status(200).json({ user, status, friends });
   } catch (err) {
     return next(err);
   }

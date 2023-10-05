@@ -16,10 +16,4 @@ router.patch(
 
 router.get("/:userId", authenticateMiddleware, userController.getUserById);
 
-router.post(
-  "/:receiverId",
-  authenticateMiddleware,
-  userController.requestFriend
-);
-
 module.exports = router;
