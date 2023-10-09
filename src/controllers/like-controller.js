@@ -46,7 +46,7 @@ exports.toggleLike = async (req, res, next) => {
           },
         },
       });
-      return res.status(200).json({ post });
+      return res.status(200).json({ message: "unlike" });
     }
     await prisma.like.create({
       data: {
@@ -71,7 +71,7 @@ exports.toggleLike = async (req, res, next) => {
         },
       },
     });
-    return res.status(200).json({ post });
+    return res.status(200).json({ message: "like" });
   } catch (err) {
     next(err);
   }
